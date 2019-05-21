@@ -51,6 +51,7 @@ void cshiolink_mainloop(FILE *in, FILE *out, bool (*load)(const char*), struct c
 #endif
 		if(line == NULL) exit(EXIT_FAILURE);
 		if((*line != '*') || (*(line + 2) != ':')) continue;
+		fputs(line, out);
 		switch(*(line + 1)){
 			case 'L':
 				chomp(line);

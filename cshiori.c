@@ -334,9 +334,17 @@ char* cshiori_shiori_response_build(const struct cshiori_response_message* const
 char* cshiori_shiori_response_build_bad_request(){
 	struct cshiori_response_message* res = cshiori_response_message_new();
 	char* str;
-	res->version = "3.0";
+
+	const char* version = "3.0";
+	res->version = (char*)malloc(strlen(version) + 1);
+	strcpy(res->version, version);
+
 	res->status_code = 400;
-	res->charset = "Shift_JIS";
+
+	const char* charset = "Shift_JIS";
+	res->charset = (char*)malloc(strlen(charset) + 1);
+	strcpy(res->charset, charset);
+
 	str = cshiori_shiori_response_build(res);
 	cshiori_response_message_delete(res);
 	return str;
@@ -345,9 +353,17 @@ char* cshiori_shiori_response_build_bad_request(){
 char* cshiori_shiori_response_build_internal_server_error(){
 	struct cshiori_response_message* res = cshiori_response_message_new();
 	char* str;
-	res->version = "3.0";
+
+	const char* version = "3.0";
+	res->version = (char*)malloc(strlen(version) + 1);
+	strcpy(res->version, version);
+
 	res->status_code = 500;
-	res->charset = "Shift_JIS";
+
+	const char* charset = "Shift_JIS";
+	res->charset = (char*)malloc(strlen(charset) + 1);
+	strcpy(res->charset, charset);
+
 	str = cshiori_shiori_response_build(res);
 	cshiori_response_message_delete(res);
 	return str;

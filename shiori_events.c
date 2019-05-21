@@ -10,11 +10,17 @@ bool shiori_unload(void){
 	return true;
 }
 
+char* copy_string(const char* source){
+	char* dest = (char*)malloc(strlen(source) + 1);
+	strcpy(dest, source);
+	return dest;
+}
+
 struct cshiori_response_message* shiori_request(struct cshiori_request_message* req, struct cshiori_response_message* res){
 	static int aitalk_count = 0;
-	res->version = "3.0";
-	res->sender = "cshiori";
-	res->charset = "Shift_JIS";
+	res->version = copy_string("3.0");
+	res->sender = copy_string("cshiori");
+	res->charset = copy_string("Shift_JIS");
 	if(req->method == NOTIFY){
 		res->status_code = 204;
 		return res;
@@ -24,28 +30,28 @@ struct cshiori_response_message* shiori_request(struct cshiori_request_message* 
 	}
 	if(0 == strcmp(req->id, "version")){
 		res->status_code = 200;
-		res->value = "0.0.1";
+		res->value = copy_string("0.0.1");
 	}else if(0 == strcmp(req->id, "name")){
 		res->status_code = 200;
-		res->value = "cshiori";
+		res->value = copy_string("cshiori");
 	}else if(0 == strcmp(req->id, "craftman")){
 		res->status_code = 200;
-		res->value = "Narazaka";
+		res->value = copy_string("Narazaka");
 	}else if(0 == strcmp(req->id, "craftmanw")){
 		res->status_code = 200;
-		res->value = "奈良阪某";
+		res->value = copy_string("奈良阪某");
 	}else if(0 == strcmp(req->id, "OnFirstBoot")){
 		res->status_code = 200;
-		res->value = "\\h\\s[0]初回起動。\\e";
+		res->value = copy_string("\\h\\s[0]初回起動。\\e");
 	}else if(0 == strcmp(req->id, "OnBoot")){
 		res->status_code = 200;
-		res->value = "\\h\\s[0]起動。\\e";
+		res->value = copy_string("\\h\\s[0]起動。\\e");
 	}else if(0 == strcmp(req->id, "OnGhostChanged")){
 		res->status_code = 200;
-		res->value = "\\h\\s[0]交代。\\e";
+		res->value = copy_string("\\h\\s[0]交代。\\e");
 	}else if(0 == strcmp(req->id, "OnGhostChanging")){
 		res->status_code = 200;
-		res->value = "\\h\\s[0]交代。\\e";
+		res->value = copy_string("\\h\\s[0]交代。\\e");
 	}else if(0 == strcmp(req->id, "OnSecondChange")){
 		aitalk_count ++;
 		if(aitalk_count == 90){
@@ -60,13 +66,13 @@ struct cshiori_response_message* shiori_request(struct cshiori_request_message* 
 			aitalk_count = 0;
 			srand((unsigned)time(NULL));
 			res->status_code = 200;
-			res->value = aitalks[rand() % aitalks_length];
+			res->value = copy_string(aitalks[rand() % aitalks_length]);
 		}else{
 			res->status_code = 204;
 		}
 	}else if(0 == strcmp(req->id, "OnClose")){
 		res->status_code = 200;
-		res->value = "\\h\\s[0]終了。\\w9\\-";
+		res->value = copy_string("\\h\\s[0]終了。\\w9\\-");
 	}else{
 		return NULL;
 	}
