@@ -1,13 +1,45 @@
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
+#include "janet/janet.h"
+
+JanetTable* env = NULL;
+
+int run_janet_script(const char* path)
+{
+    FILE *f = fopen(path, "rb");
+    fseek(f, 0, SEEK_END);
+    long fsize = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    char *string = (char*)malloc(fsize + 1);
+    fread(string, 1, fsize, f);
+    fclose(f);
+
+    string[fsize] = 0;
+
+    int status = janet_dobytes(env, string, fsize, path, NULL);
+
+    free(string);
+
+    return status;
+}
 
 bool shiori_load(const char* dirpath){
-	return true;
+    janet_init();
+
+    JanetTable* replacements = janet_table(0);
+    env = janet_core_env(replacements);
+    janet_def(env, "shiori-dirpath", janet_cstringv(dirpath), "Startup path provided by SHIORI.");
+
+    return run_janet_script("init.janet");
 }
 
 bool shiori_unload(void){
-	return true;
+    janet_deinit();
+    env = NULL;
+
+    return true;
 }
 
 char* copy_string(const char* source){
@@ -20,7 +52,7 @@ struct cshiori_response_message* shiori_request(struct cshiori_request_message* 
 	static int aitalk_count = 0;
 	res->version = copy_string("3.0");
 	res->sender = copy_string("cshiori");
-	res->charset = copy_string("Shift_JIS");
+	res->charset = copy_string("UTF-8");
 	if(req->method == NOTIFY){
 		res->status_code = 204;
 		return res;
@@ -39,28 +71,28 @@ struct cshiori_response_message* shiori_request(struct cshiori_request_message* 
 		res->value = copy_string("Narazaka");
 	}else if(0 == strcmp(req->id, "craftmanw")){
 		res->status_code = 200;
-		res->value = copy_string("“Þ—Çã–^");
+		res->value = copy_string("å¥ˆè‰¯é˜ªæŸ");
 	}else if(0 == strcmp(req->id, "OnFirstBoot")){
 		res->status_code = 200;
-		res->value = copy_string("\\h\\s[0]‰‰ñ‹N“®B\\e");
+		res->value = copy_string("\\h\\s[0]åˆå›žèµ·å‹•ã€‚\\e");
 	}else if(0 == strcmp(req->id, "OnBoot")){
 		res->status_code = 200;
-		res->value = copy_string("\\h\\s[0]‹N“®B\\e");
+		res->value = copy_string("\\h\\s[0]èµ·å‹•ã€‚\\e");
 	}else if(0 == strcmp(req->id, "OnGhostChanged")){
 		res->status_code = 200;
-		res->value = copy_string("\\h\\s[0]Œð‘ãB\\e");
+		res->value = copy_string("\\h\\s[0]äº¤ä»£ã€‚\\e");
 	}else if(0 == strcmp(req->id, "OnGhostChanging")){
 		res->status_code = 200;
-		res->value = copy_string("\\h\\s[0]Œð‘ãB\\e");
+		res->value = copy_string("\\h\\s[0]äº¤ä»£ã€‚\\e");
 	}else if(0 == strcmp(req->id, "OnSecondChange")){
 		aitalk_count ++;
 		if(aitalk_count == 90){
 			static char* const aitalks[] = {
-				"\\h\\s[0]CŒ¾Œê‚Á‚ÄA\\w4‹¹ƒLƒ…ƒ“H\\e",
-				"\\h\\s[5]MiyoJS‚à‚æ‚ë‚µ‚­B\\e",
-				"\\h\\s[0]C++‚¾‚Æconst char*‚ÈƒŠƒeƒ‰ƒ‹‚ðchar*‚É“ü‚ê‚é‚È‚Á‚Ä‚¢‚¤Œx‚ªo‚é‚¯‚ÇA\\w9\\s[8]‚Ü‚ ƒRƒ“ƒpƒCƒ‹‚Æ‚¨‚é‚©‚ç‚¢‚¢‚æ‚ËH\\e",
-				"\\h\\s[0]ŒÃ‚¢VC++‚Å‚Ístdbool.h‚ª‚È‚­‚ÄƒRƒ“ƒpƒCƒ‹‚Å‚«‚È‚¢‚©‚çA\\w9\\s[8]ƒ}ƒNƒ‚Åbool’è‚ß‚Ä‚é‚Á‚Ä‚¢‚¤ccB\\e",
-				"\\h\\s[6]‚ ‚Æ‚ÌŽÀ‘•‚ÍƒLƒ~‚µ‚¾‚¢B\\e"
+				"\\h\\s[0]Cè¨€èªžã£ã¦ã€\\w4èƒ¸ã‚­ãƒ¥ãƒ³ï¼Ÿ\\e",
+				"\\h\\s[5]MiyoJSã‚‚ã‚ˆã‚ã—ãã€‚\\e",
+				"\\h\\s[0]C++ã ã¨const char*ãªãƒªãƒ†ãƒ©ãƒ«ã‚’char*ã«å…¥ã‚Œã‚‹ãªã£ã¦ã„ã†è­¦å‘ŠãŒå‡ºã‚‹ã‘ã©ã€\\w9\\s[8]ã¾ã‚ã‚³ãƒ³ãƒ‘ã‚¤ãƒ«ã¨ãŠã‚‹ã‹ã‚‰ã„ã„ã‚ˆã­ï¼Ÿ\\e",
+				"\\h\\s[0]å¤ã„VC++ã§ã¯stdbool.hãŒãªãã¦ã‚³ãƒ³ãƒ‘ã‚¤ãƒ«ã§ããªã„ã‹ã‚‰ã€\\w9\\s[8]ãƒžã‚¯ãƒ­ã§boolå®šã‚ã¦ã‚‹ã£ã¦ã„ã†â€¦â€¦ã€‚\\e",
+				"\\h\\s[6]ã‚ã¨ã®å®Ÿè£…ã¯ã‚­ãƒŸã—ã ã„ã€‚\\e"
 			};
 			static const size_t aitalks_length = 5;
 			aitalk_count = 0;
@@ -72,9 +104,50 @@ struct cshiori_response_message* shiori_request(struct cshiori_request_message* 
 		}
 	}else if(0 == strcmp(req->id, "OnClose")){
 		res->status_code = 200;
-		res->value = copy_string("\\h\\s[0]I—¹B\\w9\\-");
+		res->value = copy_string("\\h\\s[0]çµ‚äº†ã€‚\\w9\\-");
 	}else{
 		return NULL;
 	}
 	return res;
+}
+
+char* shiori_requestb(const char* str){
+    Janet request;
+    JanetBindingType stat = janet_resolve(env, janet_csymbol("shiori/request"), &request);
+    if (stat != JANET_BINDING_DEF) {
+        return NULL;
+    }
+
+    if (janet_type(request) != JANET_FUNCTION) {
+        return NULL;
+    }
+
+    JanetFunction* request_func = janet_unwrap_function(request);
+
+    Janet sj = janet_wrap_string(str);
+    Janet arg = janet_wrap_tuple(&sj);
+    Janet result;
+    JanetFiber* fiber = NULL;
+
+    int lock = janet_gclock();
+    JanetSignal sig = janet_pcall(request_func,
+                                  1,
+                                  &arg,
+                                  &result,
+                                  &fiber);
+    janet_gcunlock(lock);
+
+    if (sig != JANET_SIGNAL_OK) {
+        return NULL;
+    }
+
+    if(janet_type(result) != JANET_STRING) {
+        return NULL;
+    }
+
+    const uint8_t* s = janet_unwrap_string(result);
+    char* st = (char*)malloc(sizeof(char) * janet_string_length(s) + 1);
+    strcpy(st, s);
+
+    return st;
 }

@@ -14,6 +14,6 @@
 #include "shiori_events.c"
 
 int main(void){
-	cshiolink_mainloop(stdin, stdout, shiori_load, shiori_request, shiori_unload);
+	cshiolink_mainloop(stdin, stdout, shiori_load, shiori_requestb, shiori_unload);
 	return 0;
 }

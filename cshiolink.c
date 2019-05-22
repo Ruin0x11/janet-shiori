@@ -38,6 +38,55 @@ char* cshiolink_request(FILE *in, struct cshiori_response_message* (*request)(st
 	return str;
 }
 
+char* cshiolink_requestb(FILE *in, char* (*request)(const char*)){
+	char** lines = NULL;
+	char** lines_new;
+	size_t lines_index = 0;
+	char* str;
+	size_t i;
+        size_t total_len = 0;
+	while(true){
+		char* line;
+		if(0 == (lines_index % CSHIOLINK_REQUEST_LINES_BUFFER_STEP)){
+			lines_new = (char**)realloc(lines, sizeof(char*) * (lines_index + CSHIOLINK_REQUEST_LINES_BUFFER_STEP));
+			if(lines_new == NULL){
+				size_t i;
+				for(i = 0; i < lines_index; ++i){
+					free(*(lines + i));
+				}
+				free(lines);
+				return NULL;
+			}
+			lines = lines_new;
+		}
+		line = getline(in);
+		chomp(line);
+		*(lines + lines_index) = line;
+		lines_index ++;
+                size_t len = strlen(line);
+                total_len += len + 1; // "str" + "\n"
+		if(0 == len) break;
+	}
+
+        char* buf = (char*)malloc(sizeof(char) * total_len);
+        *buf = '\0';
+
+	for(i = 0; i < lines_index; ++i){
+            strcat(buf, *(lines + i));
+            if (i > 0) {
+                strcat(buf, "\n");
+            }
+            free(*(lines + i));
+        }
+        free(lines);
+
+        str = cshiori_requestb(buf, request);
+
+        free(buf);
+
+        return str;
+}
+
 bool cshiolink_unload(bool (*unload)(void)){
 	return cshiori_unload(unload);
 }
@@ -50,7 +99,11 @@ void cshiolink_mainloop(FILE *in, FILE *out, bool (*load)(const char*), struct c
 		char* str_crlf;
 #endif
 		if(line == NULL) exit(EXIT_FAILURE);
-		if((*line != '*') || (*(line + 2) != ':')) continue;
+		if((*line != '*') || (*(line + 2) != ':'))
+                {
+                    fputs("bad command\n", out);
+                    continue;
+                }
 		fputs(line, out);
 		switch(*(line + 1)){
 			case 'L':
@@ -67,7 +120,7 @@ void cshiolink_mainloop(FILE *in, FILE *out, bool (*load)(const char*), struct c
 				fputs(line, out);
 				fflush(out);
 				free(line);
-				str = cshiolink_request(in, request);
+				str = cshiolink_requestb(in, request);
 				if(str == NULL) str = cshiori_shiori_response_build_internal_server_error();
 #if defined(WIN32)||defined(_WIN32)||defined(_Windows)||defined(__CYGWIN__)
 				str_crlf = str;

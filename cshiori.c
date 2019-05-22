@@ -19,6 +19,12 @@ char* cshiori_request(char** const lines, const size_t lines_length, struct cshi
 	return str;
 }
 
+char* cshiori_requestb(char* const req, char* (*request)(const char* str)){
+	char* res = request(req);
+	if(res == NULL) return cshiori_shiori_response_build_bad_request();
+	return res;
+}
+
 bool cshiori_unload(bool (*unload)(void)){
 	return unload();
 }
@@ -341,7 +347,7 @@ char* cshiori_shiori_response_build_bad_request(){
 
 	res->status_code = 400;
 
-	const char* charset = "Shift_JIS";
+	const char* charset = "UTF-8";
 	res->charset = (char*)malloc(strlen(charset) + 1);
 	strcpy(res->charset, charset);
 
@@ -360,7 +366,7 @@ char* cshiori_shiori_response_build_internal_server_error(){
 
 	res->status_code = 500;
 
-	const char* charset = "Shift_JIS";
+	const char* charset = "UTF-8";
 	res->charset = (char*)malloc(strlen(charset) + 1);
 	strcpy(res->charset, charset);
 
