@@ -68,14 +68,12 @@ char* cshiolink_requestb(FILE *in, char* (*request)(const char*)){
 		if(0 == len) break;
 	}
 
-        char* buf = (char*)malloc(sizeof(char) * total_len);
+        char* buf = (char*)malloc(sizeof(char) * total_len + 1);
         *buf = '\0';
 
 	for(i = 0; i < lines_index; ++i){
             strcat(buf, *(lines + i));
-            if (i > 0) {
-                strcat(buf, "\n");
-            }
+            strcat(buf, "\n");
             free(*(lines + i));
         }
         free(lines);

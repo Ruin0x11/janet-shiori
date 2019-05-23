@@ -124,15 +124,14 @@ char* shiori_requestb(const char* str){
 
     JanetFunction* request_func = janet_unwrap_function(request);
 
-    Janet sj = janet_wrap_string(str);
-    Janet arg = janet_wrap_tuple(&sj);
+    Janet sj = janet_cstringv(str);
     Janet result;
-    JanetFiber* fiber = NULL;
+    JanetFiber* fiber = janet_current_fiber();
 
     int lock = janet_gclock();
     JanetSignal sig = janet_pcall(request_func,
                                   1,
-                                  &arg,
+                                  &sj,
                                   &result,
                                   &fiber);
     janet_gcunlock(lock);

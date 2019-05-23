@@ -35,10 +35,10 @@ add_custom_command(
         TARGET shiori POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
                 ${CMAKE_SOURCE_DIR}/init.janet
-                ${CMAKE_CURRENT_BINARY_DIR}/init.janet)
+                $<TARGET_FILE_DIR:shiori>)
 
 add_custom_command(
-        TARGET shiolink POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/init.janet
-                ${CMAKE_CURRENT_BINARY_DIR}/init.janet)
+        TARGET shiori POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/modules
+                $<TARGET_FILE_DIR:shiori>/modules)
