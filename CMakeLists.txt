@@ -13,7 +13,8 @@ endif()
 
 if(MSVC)
     add_definitions("-D_UNICODE")
-    add_compile_options("/GL" "/MT$<$<CONFIG:Debug>:d>" "/source-charset:utf-8")
+    # add_compile_options("/GL" "/MT$<$<CONFIG:Debug>:d>" "/source-charset:utf-8")
+    add_compile_options("/GL" "/source-charset:utf-8")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE")
 else()
     add_compile_options("-O3" "-DNDEBUG" "-Wall")
@@ -35,6 +36,12 @@ add_custom_command(
         TARGET shiori POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
                 ${CMAKE_SOURCE_DIR}/init.janet
+                $<TARGET_FILE_DIR:shiori>)
+
+add_custom_command(
+        TARGET shiori POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/cmd.txt
                 $<TARGET_FILE_DIR:shiori>)
 
 add_custom_command(

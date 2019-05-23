@@ -1,7 +1,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
-#include "janet/janet.h"
+#include "janet/dist/janet.h"
 
 JanetTable* env = NULL;
 
@@ -16,9 +16,9 @@ int run_janet_script(const char* path)
     fread(string, 1, fsize, f);
     fclose(f);
 
-    string[fsize] = 0;
+    string[fsize] = '\0';
 
-    int status = janet_dobytes(env, string, fsize, path, NULL);
+    int status = janet_dostring(env, string, path, NULL);
 
     free(string);
 
@@ -111,9 +111,13 @@ struct cshiori_response_message* shiori_request(struct cshiori_request_message* 
 	return res;
 }
 
+int count = 0;
+
 char* shiori_requestb(const char* str){
+    count++;
     Janet request;
-    JanetBindingType stat = janet_resolve(env, janet_csymbol("shiori/request"), &request);
+    const uint8_t* sym = janet_csymbol("shiori/request");
+    JanetBindingType stat = janet_resolve(env, sym, &request);
     if (stat != JANET_BINDING_DEF) {
         return NULL;
     }

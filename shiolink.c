@@ -14,6 +14,7 @@
 #include "shiori_events.c"
 
 int main(void){
-	cshiolink_mainloop(stdin, stdout, shiori_load, shiori_requestb, shiori_unload);
+    FILE *f = fopen("cmd.txt", "rb");
+        cshiolink_mainloop(f, stdout, shiori_load, shiori_requestb, shiori_unload);
 	return 0;
 }

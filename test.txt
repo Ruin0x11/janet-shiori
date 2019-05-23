@@ -1,0 +1,6 @@
+NOTIFY SSTP/1.0
+Sender: さくら
+Event: OnJanetEval
+Reference0: (+ 1 2 3 4 5)
+Charset: UTF-8
+

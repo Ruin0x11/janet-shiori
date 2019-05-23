@@ -1,6 +1,6 @@
 (import "lib" :prefix "")
 
-(def- valid-ops {"GET" true "POST" true})
+(def- valid-ops {"GET" true "POST" true "NOTIFY" true})
 
 (def handlers @{})
 (var state {})
@@ -35,18 +35,20 @@
 (defn- parse-request [req]
   (unless (string/has-suffix? "\n\n" req) (error "No trailing newline"))
   (let [sp (string/split "\n" req)
-        head (get sp 0)
-        [op s] (string/split " " head )
-        [shiori ver] (string/split "/" s)
-        kvs (map (fn [i] (string/split ": " i))
-                 (array/slice sp 1 (- (length sp) 1)))
-        opts (table/to-struct
-              (reduce (fn [t i] (put t (get i 0) (get i 1))) @{} kvs))]
-    (unless (= ver "3.0") (error "Bad version"))
-    (unless (= shiori "SHIORI") (error "Bad request"))
-    (unless (get opts "ID") (error "No ID"))
-    (unless (get valid-ops op) (error "Bad operation"))
-    {:op op :ver ver :opts opts}))
+           head (get sp 0)
+           kvs (map (fn [i] (string/split ": " i))
+                    (array/slice sp 1 (- (length sp) 1)))
+           opts (table/to-struct
+                 (reduce (fn [t i] (put t (get i 0) (get i 1))) @{} kvs))]
+    (if (= "GET Version SHIORI/2.6")
+        {:op "GET Version" :ver "2.6" :opts opts} # hack
+      (let [[op s] (string/split " " head)
+            [shiori ver] (string/split "/" s)]
+        (unless (= ver "3.0") (error "Bad version"))
+        (unless (= shiori "SHIORI") (error "Bad request"))
+        (unless (get opts "ID") (error "No ID"))
+        (unless (get valid-ops op) (error "Bad operation"))
+        {:op op :ver ver :opts opts}))))
 
 (defn- make-status [result]
   (let [found
@@ -61,10 +63,33 @@
         body (-> result
                  make-opts
                  concat-opts)]
-    (string/format "SHIORI/3.0\n%d %s\nEncoding: UTF-8\n%s\n" the-status message body)))
+    (string/format "SHIORI/3.0 %d %s\nCharset: UTF-8\n%s\n" the-status message body)))
 
 (defn- bad-request [err]
-  (make-response {:status 400 :value err}))
+  (make-response {:status 500 :value err}))
+
+(defn trigger [event opts]
+  (if-let [f (get handlers event)]
+      (apply f opts [(or state {})])
+    @{:status 204 :value "No handler"}))
+
+(defn- trigger* [event opts]
+  (let [result (trigger event opts)]
+    (match (type result)
+           :string (make-response result)
+           :struct (make-response result)
+           :table (make-response result)
+           :tuple
+           (do
+               (set state (get result 1))
+               (make-response (get result 0)))
+           (bad-request "Bad handler"))))
+
+(def- log (file/open "shiori.log" :w))
+
+(defn dolog [str]
+  (when log (file/write log str))
+  str)
 
 (defn request
   "Parses REQ, a string, and returns a string with the response.
@@ -72,23 +97,15 @@
 Main entry point from SHIORI server library. This function must be
 bound as it is called from C."
   [req]
-  (try
-   (do
-       (let [{:opts opts} (parse-request req)
-             {"ID" id} opts]
-         (if-let [f (get handlers id)]
-             (let [result (apply f opts [(or state {})])]
-               (match (type result)
-                      :string (make-response result)
-                      :tuple
-                      (do
-                          (set state (get result 1))
-                          (make-response (get result 0)))
-                      (bad-request "Bad handler")))
-          (bad-request (string/format "No handler for %s" id)))))
-   ([err fib]
-    (debug/stacktrace fib err)
-    (bad-request err))))
+  (dolog (try
+          (do
+              (dolog req)
+              (let [{:opts opts} (parse-request req)
+                    id (or (opts "ID") (opts "Event"))]
+                (trigger* id opts)))
+          ([err fib]
+           (debug/stacktrace fib err)
+           (bad-request err)))))
 
 (defmacro register-handler
   "Register a function for the SHIORI event EVENT that runs BODY.
@@ -116,3 +133,17 @@ the status and return :value, a string or dictionary."
 (register-handler-internal "name" name)
 (register-handler-internal "craftman" craftman)
 (register-handler-internal "craftmanw" craftmanw)
+
+(defn get-top-sym [code]
+  (let [parts (string/split " " code)]
+    (if (> (length parts) 0)
+        (string/triml (get parts 0) "(")
+      "")))
+
+(register-handler-internal
+ "OnJanetEval"
+ (let [code (get opts "Reference0")
+            head (get-top-sym code)
+            [stat res] (safe-eval-string code)
+            event (if (= stat :failure) "OnJanetEvalFailure" "OnJanetEvalSuccess")]
+   (trigger event @{"Reference0" res "Reference1" head})))

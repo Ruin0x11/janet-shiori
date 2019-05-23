@@ -1,0 +1,11 @@
+NOTIFY SSTP/1.1
+Sender: さくら
+Event: OnMusicPlay
+Reference0: 元祖高木ブー伝説
+Reference1: 筋肉少女帯
+IfGhost: なる,ゆうか
+Script: \h\s0‥‥\w8\w8高木ブーだね。\u\s0‥‥\e
+IfGhost: さくら,うにゅう
+Script: \h\s0‥‥\w8\w8高木ブーだね。\u\s0‥‥\w8\w8むう。\e
+Charset: UTF-8
+

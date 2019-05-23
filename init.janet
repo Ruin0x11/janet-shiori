@@ -13,19 +13,22 @@
 (set shiori/craftmanw "ルイン")
 
 (defn sakura [text &opt i]
-  (string/format "\\h\\s[%d]%s\\e" (or i 0) text))
+  (escape-str (string/format "\\h\\s[%d]%s\\e" (or i 0) text)))
 
 (shiori/register-handler "OnFirstBoot"
-  (sakura "First boot."))
+  (sakura "はじめまして。"))
+
+(shiori/register-handler "OnBoot"
+  (sakura "よっ。"))
 
 (shiori/register-handler "OnClose"
-  (sakura "Closing."))
+  "\\h\\s[0]じゃあね。\\w9\\-")
 
 (shiori/register-handler "OnGhostChanged"
-  (sakura "Ghost changed."))
+  (sakura "交代、交代…"))
 
 (shiori/register-handler "OnGhostChanging"
-  (sakura "Ghost changing."))
+  (sakura "交代、交代…"))
 
 (def phrases
 @[(sakura "C言語って、\\w4胸キュン？")
@@ -48,11 +51,18 @@
   (with-syms [$i]
              ~(for ,$i 0 ,times ,;body)))
 
-(shiori/register-handler "OnJanetEval"
-                         (let [code (get opts "Reference1")
-                                    [stat res] (safe-eval-string code)]
-                           (if (= stat :failure)
-                               (sakura (string "あれ？失敗しちゃった。\n" res))
-                             (sakura (string "こんなもんが出てきた。\n" res)))))
+(defmacro ref [i]
+  ~(get opts (string/format "Reference%d" ,i)))
 
-(print "loaded")
+(shiori/register-handler "OnJanetEvalSuccess"
+                         (match (ref 1)
+                                "defn" (sakura (string "新しいファンクションの誕生だっ！\n\n    " (ref 0)))
+                                x (sakura (string "こんなもんが出てきた。\n\n    " (ref 0)))))
+
+(shiori/register-handler "OnJanetEvalFailure"
+                         (sakura (string "あれ？失敗しちゃった。\n\n    " (ref 0))))
+
+# (shiori/register-handler "OnJanetDocFinish"
+#                          (if (ref 1)
+#                              (sakura (string "ほいっ。\n" (ref 1)))
+#                              (sakura (string (ref 2) "、見つからなかった…\n"))))
