@@ -15,13 +15,13 @@
 (def default-surface 100)
 
 (defn sakura [text &opt i]
-  (string/format "\\h\\s[%d]%s\\e" (or i default-surface) (escape-str text)))
+  (string/format "\\h\\s[%d]%s\\0\\e" (or i default-surface) (escape-str text)))
 
 (shiori/register-handler "OnFirstBoot"
   (sakura "はじめまして。"))
 
 (shiori/register-handler "OnBoot"
-  (sakura "よっ。"))
+  (sakura "\\0よっ。\\1\\s[50]ちっす。"))
 
 (shiori/register-handler "OnClose"
   "\\h\\s[200]じゃあね。\\w9\\-")
@@ -42,11 +42,13 @@
 (defn sample [col]
   (get col (math/floor (* (length col) (math/random)))))
 
-(shiori/register-handler "OnSecondChange"
-  (let [aitalk (or (get state :aitalk) 0)]
-    (if (> aitalk 90)
-        [(sample phrases) (merge state {:aitalk 0})]
-        [{:status 204} (merge state {:aitalk (inc aitalk)})])))
+(shiori/set-handler "OnSecondChange"
+                    (set it status)
+  (if (= (length status) 0)
+    (let [aitalk (or (get state :aitalk) 0)]
+      (if (> aitalk 90)
+          [(sample phrases) (merge state {:aitalk 0})]
+        [{:status 204} (merge state {:aitalk (inc aitalk)})]))))
 
 (defmacro dotimes
     [times & body]
@@ -61,36 +63,42 @@
             (string/has-prefix? pref str))
         @["\\h" "\\t"]))
 
-(shiori/register-handler "OnJanetEvalSuccess"
-                         (let [default-resp (fn [x]
-                                                (sakura (string "> " x "\n\nこんなもんが出てきた。")))]
-                           (match (ref 1)
-                                  "shiori/register-handler"
-                                  (sakura "よしっ、新しい技を覚えた！" 4)
+(shiori/set-handler "OnJanetEvalSuccess"
+                    (let [default-resp (fn [x]
+                                           (sakura (string "> " x "\n\n\\0こんなもんが出てきた。")))]
+                      (match (ref 1)
+                             "shiori/set-handler"
+                             (sakura "技の設定、完了。" 1)
 
-                                  "defn"
-                                  (sakura (string "新しいファンクションの誕生だっ！\n\n> " (ref 0)))
+                             "shiori/register-handler"
+                             (sakura "よしっ、新しい技を覚えた！" 4)
 
-                                  "get"
-                                  (if (= (ref 0) nil)
-                                      (sakura "何も帰って来なかった。")
-                                    (sakura (string "ほいっ。" (ref 0))))
+                             "shiori/on-choice"
+                             (sakura "選択肢を編集しました。" 0)
 
-                                  x
-                                  (cond
-                                   (= (type (ref 0)) :boolean)
-                                   (if (ref 0) (sakura "はい、答えはtrueです。")
-                                     (sakura "いいえ、答えはfalseです。"))
+                             "defn"
+                             (sakura (string "新しいファンクションの誕生だっ！\n\n> " (ref 0)))
 
-                                   (string? (ref 0))
-                                   (if (is-likely-sakura? (ref 0))
-                                       (ref 0)
-                                     (default-resp (string "\"" (ref 0) "\"")))
+                             "get"
+                             (if (= (ref 0) nil)
+                                 (sakura "何も帰って来なかった。")
+                               (sakura (string "ほいっ。" (ref 0))))
 
-                                   (default-resp (ref 0))))))
+                             x
+                             (cond
+                              (= (type (ref 0)) :boolean)
+                              (if (ref 0) (sakura "はい、答えはtrueです。")
+                                (sakura "いいえ、答えはfalseです。"))
 
-(shiori/register-handler "OnJanetEvalFailure"
-                         (sakura (string "あれ？失敗しちゃった。\n\n    " (ref 0))))
+                              (string? (ref 0))
+                              (if (is-likely-sakura? (ref 0))
+                                  (ref 0)
+                                (default-resp (string "\"" (ref 0) "\"")))
+
+                              (default-resp (ref 0))))))
+
+(shiori/set-handler "OnJanetEvalFailure"
+                    (sakura (string "あれ？失敗しちゃった。\n\n> " (ref 0))))
 
 # (shiori/register-handler "OnJanetDocFinish"
 #                          (if (ref 1)
@@ -101,26 +109,47 @@
 
 (def memory @{})
 
-(defn remember [event opts]
+(defn remember [event opts status]
   (unless (get shiori/handlers event)
     (put memory event true)))
 
 (shiori/on-request remember)
 
-(def menu "\\t\\b[2]\\n[half]\\n\\_q\\n![*]\\q[おしゃべり,ai]")
+(def menu "\\t\\b[2]\\n[half]\\n\\_q\\n![*]\\q[おしゃべり,ai]\\n![*]\\q[記憶,kioku]\\n![*]\\q[ステータス,status]\\n![*]\\q[定義,state]\\n\\n![*]\\q[別に,end]")
 
-(shiori/register-handler "OnMouseDoubleClick"
-                         (match (ref 3)
+(shiori/set-handler "OnMouseDoubleClick"
+                    (when (= (ref 3) "0")
+                      (match (ref 4)
 
-                                "Head"
-                                (sakura (string/format "はい、頭なんです。\\w5\\s[2]%sじゃなくて。"
-                                                       (sample @["ドラムセット" "ゲームパッド" "太鼓"])) 1)
+                             "Head"
+                             (sakura (string/format "はい、頭なんです。\\w9\\s[2]%sじゃなくて。"
+                                                    (sample @["ドラムセット" "ゲームパッド" "太鼓"])) 1)
 
-                                "Face"
-                                (sample @[(sakura "いたっ。" 2)
-                                          (sakura "…なんで顔を叩いているんですか？" 2)])
+                             "Face"
+                             (sample @[(sakura "いたっ。" 2)
+                                       (sakura "…なんで顔を叩いているんですか？" 2)])
 
-                                "Bust"
-                                (sakura "…エッチ。" 3)
+                             "Bust"
+                             (sakura "…エッチ。" 3)
 
-                                ("\\0\\sなに？" menu)))
+                             (string "\\0\\s[0]なに？" menu))))
+
+(shiori/on-choice "ai"
+                  "トークを選択しました。")
+
+(shiori/on-choice "kioku"
+                  (string "\\h\\s[0]えーっと、こういうイベントを覚えています。\\n\\n\\_q"
+                          (string/join (sort (keys memory)) "\\n")
+                          "\\_q\\n\\n\\q[忘れろ,wasurero]\\n\\q[オッケー,end]\\e"))
+
+(shiori/on-choice "wasurero"
+                  (each k (keys memory) (put memory k nil))
+                  (sakura "はい、全部忘れました。\\1\\s[51]どうやって！？"))
+
+(shiori/on-choice "status"
+                  (sakura (string "こっちは今の状況です。\\n\\n"
+                                  (string/join (keys status) "\\n"))))
+
+(shiori/on-choice "state"
+                  (sakura (string "単数の定義です。\\n\\n"
+                                  (string/join (map (fn [[k v]] (string/format "%s - %s" (string k) (string v))) (kvpairs state)) "\\n"))))

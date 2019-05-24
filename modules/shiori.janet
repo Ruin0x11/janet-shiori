@@ -68,14 +68,17 @@
 (defn- bad-request [err]
   (make-response {:status 500 :value err}))
 
-(defn trigger [event opts]
+(defn trigger [event &opt opts status]
   (default opts @{})
-  (if-let [f (get handlers event)]
-      (apply f opts [(or state {})])
+  (default status @{})
+  (if-let [for-event (get handlers event)
+           val (some (fn [f] (apply f opts status [(or state {})])) for-event)]
+      val
     @{:status 204 :value "No handler"}))
 
-(defn- trigger* [event opts]
-  (let [result (trigger event opts)]
+(defn- trigger* [event opts status]
+  (let [result (trigger event opts status)]
+    (pp result)
     (match (type result)
            :string (make-response result)
            :struct (make-response result)
@@ -94,24 +97,39 @@ with the string as 'Value'. If RESULT is a dictionary, use :status as
 the status and return :value, a string or dictionary."
   [event & body]
   (with-syms [$the-func $handlers]
-    ~(let [,$the-func (fn [opts state] ,;body)
+    ~(let [,$the-func (fn [opts status state] ,;body)
            ,$handlers (((module/cache "shiori") (symbol :handlers)) :value)]
-       (put ,$handlers ,event ,$the-func))))
+       (unless (get ,$handlers ,event)
+         (put ,$handlers ,event @[]))
+       (array/insert (get ,$handlers ,event) 0 ,$the-func))))
 
-(defmacro- register-handler-internal [event & body]
+(defmacro set-handler
+  "Like `register-handler`, but clears the handlers table for EVENT first. "
+  [event & body]
+  (with-syms [$the-func $handlers]
+    ~(let [,$the-func (fn [opts status state] ,;body)
+           ,$handlers (((module/cache "shiori") (symbol :handlers)) :value)]
+       (put ,$handlers ,event @[])
+       (array/insert (get ,$handlers ,event) 0 ,$the-func))))
+
+(defmacro- set-handler-internal [event & body]
   (with-syms [$the-func]
-             ~(let [,$the-func (fn [opts state] ,;body)]
-                (put handlers ,event ,$the-func))))
+             ~(let [,$the-func (fn [opts status state] ,;body)]
+                (put handlers ,event @[])
+                (array/insert (get handlers ,event) 0 ,$the-func))))
+
+(defn clear-handlers [event]
+  (put handlers event @[]))
 
 (var version "0.0.1")
 (var name "janet-shiori")
 (var craftman "Ruin0x11")
 (var craftmanw "ルイン")
 
-(register-handler-internal "version" version)
-(register-handler-internal "name" name)
-(register-handler-internal "craftman" craftman)
-(register-handler-internal "craftmanw" craftmanw)
+(set-handler-internal "version" version)
+(set-handler-internal "name" name)
+(set-handler-internal "craftman" craftman)
+(set-handler-internal "craftmanw" craftmanw)
 
 (defn get-top-sym [code]
   (let [parts (string/split " " code)]
@@ -119,14 +137,23 @@ the status and return :value, a string or dictionary."
         (string/triml (get parts 0) "(")
       "")))
 
-(register-handler-internal
+(set-handler-internal
  "OnJanetEval"
  (let [code (get opts "Reference0")
             head (get-top-sym code)
             [stat res] (safe-eval-string code)
             event (if (= stat :failure) "OnJanetEvalFailure" "OnJanetEvalSuccess")]
-   (trigger event @{"Reference0" res "Reference1" head})))
+   (trigger event @{"Reference0" res "Reference1" head} status)))
 
+
+(defmacro on-choice [choice & body]
+  ~(shiori/register-handler "OnChoiceSelect" (when (= (get opts "Reference0") ,choice) ,;body)))
+
+#
+#
+# Request
+#
+#
 
 (def- log (file/open "shiori.log" :w))
 
@@ -139,6 +166,14 @@ the status and return :value, a string or dictionary."
 (defn on-request [cb]
   (array/concat on-request-callbacks cb))
 
+(defn parse-status [status]
+  (if (not status)
+      @{}
+    (let [res (string/split "," status)]
+      (if (and (= (length res) 1) (= (first res) ""))
+          @{}
+        (to-table res)))))
+
 (defn request
   "Parses REQ, a string, and returns a string with the response.
 
@@ -150,10 +185,11 @@ bound as it is called from C."
     (do
         (dolog req)
         (let [{:opts opts} (parse-request req)
-              id (or (opts "ID") (opts "Event"))]
+              id (or (opts "ID") (opts "Event"))
+              status (parse-status (opts "Status"))]
           (each cb on-request-callbacks
-                (apply cb id [opts]))
-          (trigger* id opts)))
+                (apply cb id opts [status]))
+          (trigger* id opts status)))
     ([err fib]
      (debug/stacktrace fib err)
      (bad-request err)))))

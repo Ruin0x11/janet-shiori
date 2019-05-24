@@ -11,6 +11,11 @@
 (defn kvpairs [tbl]
   (partition 2 (kvs tbl)))
 
+(defn to-table [arr]
+  (def tbl @{})
+  (each x arr (put tbl x true))
+  tbl)
+
 (def- escapes @{13 "\\r"
                 10 "\\n"
                 92 "\\\\"})
