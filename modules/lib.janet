@@ -21,12 +21,8 @@
       (string/replace-all "\n" "\\n")
       (string/replace-all "\r" "\\r")))
 
-(def theenv (fiber/getenv (fiber/current)))
-
-
 (defn my-eval-string
-  "Evaluates a string in the specified environment. If more control over the
-  environment is needed, use run-context."
+  "Evaluates a string in the specified environment."
   [str env]
   (var state (string str))
   (defn chunks [buf _]
@@ -49,13 +45,14 @@
                 :source "eval-string"})
   returnval)
 
+(var env (make-env))
+
 (defn safe-eval-string [str]
   (let [trunc (fn [s] (escape-str (string/slice s 0 (min (length s) 256))))]
     (pp (keys module/cache))
-    (pp (keys theenv))
     (try
      [:success (trunc (string
                        (my-eval-string
                         (unescape-str str)
-                        (make-env))))]
+                        env)))]
      ([err fib] [:failure (trunc err)]))))

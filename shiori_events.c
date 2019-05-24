@@ -111,13 +111,9 @@ struct cshiori_response_message* shiori_request(struct cshiori_request_message* 
 	return res;
 }
 
-int count = 0;
-
 char* shiori_requestb(const char* str){
-    count++;
     Janet request;
-    const uint8_t* sym = janet_csymbol("shiori/request");
-    JanetBindingType stat = janet_resolve(env, sym, &request);
+    JanetBindingType stat = janet_resolve(env, janet_csymbol("shiori/request"), &request);
     if (stat != JANET_BINDING_DEF) {
         return NULL;
     }
@@ -131,6 +127,7 @@ char* shiori_requestb(const char* str){
     Janet sj = janet_cstringv(str);
     Janet result;
     JanetFiber* fiber = janet_current_fiber();
+    // fiber->env = janet_core_env(replacements);
 
     int lock = janet_gclock();
     JanetSignal sig = janet_pcall(request_func,

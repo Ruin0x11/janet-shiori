@@ -57,7 +57,7 @@
 (shiori/register-handler "OnJanetEvalSuccess"
                          (match (ref 1)
                                 "defn" (sakura (string "新しいファンクションの誕生だっ！\n\n    " (ref 0)))
-                                x (sakura (string "こんなもんが出てきた。\n\n    " (ref 0)))))
+                                x (sakura (string "> " (ref 0) "\n\nこんなもんが出てきた。"))))
 
 (shiori/register-handler "OnJanetEvalFailure"
                          (sakura (string "あれ？失敗しちゃった。\n\n    " (ref 0))))
@@ -66,3 +66,5 @@
 #                          (if (ref 1)
 #                              (sakura (string "ほいっ。\n" (ref 1)))
 #                              (sakura (string (ref 2) "、見つからなかった…\n"))))
+
+(set env (fiber/getenv (fiber/current)))

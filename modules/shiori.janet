@@ -68,7 +68,8 @@
 (defn- bad-request [err]
   (make-response {:status 500 :value err}))
 
-(defn trigger [event opts]
+(defn trigger [event & opts]
+  (default opts @{})
   (if-let [f (get handlers event)]
       (apply f opts [(or state {})])
     @{:status 204 :value "No handler"}))
@@ -97,15 +98,16 @@
 Main entry point from SHIORI server library. This function must be
 bound as it is called from C."
   [req]
-  (dolog (try
-          (do
-              (dolog req)
-              (let [{:opts opts} (parse-request req)
-                    id (or (opts "ID") (opts "Event"))]
-                (trigger* id opts)))
-          ([err fib]
-           (debug/stacktrace fib err)
-           (bad-request err)))))
+  (dolog
+   (try
+    (do
+        (dolog req)
+        (let [{:opts opts} (parse-request req)
+              id (or (opts "ID") (opts "Event"))]
+          (trigger* id opts)))
+    ([err fib]
+     (debug/stacktrace fib err)
+     (bad-request err)))))
 
 (defmacro register-handler
   "Register a function for the SHIORI event EVENT that runs BODY.
