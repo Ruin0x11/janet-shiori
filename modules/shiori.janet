@@ -70,14 +70,12 @@
 
 (defn trigger [event opts]
   (default opts @{})
-  (if-let [for-event (get handlers event)
-           val (some (fn [f] (apply f opts [(or state {})])) for-event)]
-      val
+  (if-let [f (get handlers event)]
+      (apply f opts [(or state {})])
     @{:status 204 :value "No handler"}))
 
 (defn- trigger* [event opts]
   (let [result (trigger event opts)]
-    (pp result)
     (match (type result)
            :string (make-response result)
            :struct (make-response result)
@@ -98,17 +96,12 @@ the status and return :value, a string or dictionary."
   (with-syms [$the-func $handlers]
     ~(let [,$the-func (fn [opts state] ,;body)
            ,$handlers (((module/cache "shiori") (symbol :handlers)) :value)]
-       (unless (get ,$handlers ,event) (put ,$handlers ,event @[]))
-       (array/concat (get ,$handlers ,event) ,$the-func))))
+       (put ,$handlers ,event ,$the-func))))
 
 (defmacro- register-handler-internal [event & body]
   (with-syms [$the-func]
              ~(let [,$the-func (fn [opts state] ,;body)]
-                (unless (get handlers ,event) (put handlers ,event @[]))
-                (array/concat (get handlers ,event) ,$the-func))))
-
-(defn clear-handlers [event]
-  (put handlers event @[]))
+                (put handlers ,event ,$the-func))))
 
 (var version "0.0.1")
 (var name "janet-shiori")
