@@ -68,14 +68,16 @@
 (defn- bad-request [err]
   (make-response {:status 500 :value err}))
 
-(defn trigger [event & opts]
+(defn trigger [event opts]
   (default opts @{})
-  (if-let [f (get handlers event)]
-      (apply f opts [(or state {})])
+  (if-let [for-event (get handlers event)
+           val (some (fn [f] (apply f opts [(or state {})])) for-event)]
+      val
     @{:status 204 :value "No handler"}))
 
 (defn- trigger* [event opts]
   (let [result (trigger event opts)]
+    (pp result)
     (match (type result)
            :string (make-response result)
            :struct (make-response result)
@@ -85,29 +87,6 @@
                (set state (get result 1))
                (make-response (get result 0)))
            (bad-request "Bad handler"))))
-
-(def- log (file/open "shiori.log" :w))
-
-(defn dolog [str]
-  (when log (file/write log str))
-  str)
-
-(defn request
-  "Parses REQ, a string, and returns a string with the response.
-
-Main entry point from SHIORI server library. This function must be
-bound as it is called from C."
-  [req]
-  (dolog
-   (try
-    (do
-        (dolog req)
-        (let [{:opts opts} (parse-request req)
-              id (or (opts "ID") (opts "Event"))]
-          (trigger* id opts)))
-    ([err fib]
-     (debug/stacktrace fib err)
-     (bad-request err)))))
 
 (defmacro register-handler
   "Register a function for the SHIORI event EVENT that runs BODY.
@@ -119,12 +98,17 @@ the status and return :value, a string or dictionary."
   (with-syms [$the-func $handlers]
     ~(let [,$the-func (fn [opts state] ,;body)
            ,$handlers (((module/cache "shiori") (symbol :handlers)) :value)]
-       (put ,$handlers ,event ,$the-func))))
+       (unless (get ,$handlers ,event) (put ,$handlers ,event @[]))
+       (array/concat (get ,$handlers ,event) ,$the-func))))
 
 (defmacro- register-handler-internal [event & body]
   (with-syms [$the-func]
              ~(let [,$the-func (fn [opts state] ,;body)]
-                (put handlers ,event ,$the-func))))
+                (unless (get handlers ,event) (put handlers ,event @[]))
+                (array/concat (get handlers ,event) ,$the-func))))
+
+(defn clear-handlers [event]
+  (put handlers event @[]))
 
 (var version "0.0.1")
 (var name "janet-shiori")
@@ -149,3 +133,34 @@ the status and return :value, a string or dictionary."
             [stat res] (safe-eval-string code)
             event (if (= stat :failure) "OnJanetEvalFailure" "OnJanetEvalSuccess")]
    (trigger event @{"Reference0" res "Reference1" head})))
+
+
+(def- log (file/open "shiori.log" :w))
+
+(defn dolog [str]
+  (when log (file/write log str))
+  str)
+
+(def- on-request-callbacks @[])
+
+(defn on-request [cb]
+  (array/concat on-request-callbacks cb))
+
+(defn request
+  "Parses REQ, a string, and returns a string with the response.
+
+Main entry point from SHIORI server library. This function must be
+bound as it is called from C."
+  [req]
+  (dolog
+   (try
+    (do
+        (dolog req)
+        (let [{:opts opts} (parse-request req)
+              id (or (opts "ID") (opts "Event"))]
+          (each cb on-request-callbacks
+                (apply cb id [opts]))
+          (trigger* id opts)))
+    ([err fib]
+     (debug/stacktrace fib err)
+     (bad-request err)))))

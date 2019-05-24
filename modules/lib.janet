@@ -11,15 +11,55 @@
 (defn kvpairs [tbl]
   (partition 2 (kvs tbl)))
 
-(defn unescape-str [str]
-  (->> str
-      (string/replace-all "\\n" "\n")
-      (string/replace-all "\\r" "\r")))
+(def- escapes @{13 "\\r"
+                10 "\\n"
+                92 "\\\\"})
 
-(defn escape-str [str]
-  (->> str
-      (string/replace-all "\n" "\\n")
-      (string/replace-all "\r" "\\r")))
+(def- unescapes @{114 13
+                  110 10
+                   92 92})
+
+(defn escape-str
+  [str]
+  (def buf @"")
+  (var seen false)
+  (loop [byte :in str]
+        (if seen
+            (do (set seen false)
+                (if (= 92 byte)
+                    (buffer/push-string "\\\\")
+                  (do
+                      (buffer/push-byte buf 92)
+                      (buffer/push-byte buf byte))))
+            (if (= 92 byte)
+                (set seen true)
+              (if-let [rep (get escapes byte)]
+                  (buffer/push-string buf rep)
+                (buffer/push-byte buf byte)))))
+  (when seen
+      (buffer/push-byte buf 92))
+  (string buf))
+
+(defn unescape-str
+  [str]
+  (def buf @"")
+  (var seen false)
+  (loop [byte :in str]
+        (if seen
+            (do
+                (set seen false)
+                (if-let [rep (get unescapes byte)]
+                    (buffer/push-byte buf rep)
+                  (do
+                      (buffer/push-byte buf 92)
+                      (buffer/push-byte buf byte))))
+          (if (= byte 92)
+              (set seen true)
+            (buffer/push-byte buf byte))))
+  (when seen
+    (buffer/push-byte buf 92))
+  (string buf))
+
 
 (defn my-eval-string
   "Evaluates a string in the specified environment."
@@ -51,8 +91,7 @@
   (let [trunc (fn [s] (escape-str (string/slice s 0 (min (length s) 256))))]
     (pp (keys module/cache))
     (try
-     [:success (trunc (string
-                       (my-eval-string
-                        (unescape-str str)
-                        env)))]
+     (let [val (my-eval-string (unescape-str str) env)
+           ret (if (string? val) (trunc val) val)]
+       [:success ret])
      ([err fib] [:failure (trunc err)]))))
