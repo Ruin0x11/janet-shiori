@@ -1,0 +1,10 @@
+charset,Shift_JIS
+
+craftman,Ruin0x11
+craftmanurl,https://www.github.com/Ruin0x11
+craftmanw,ルイン
+id,1
+kero.name,イゴ
+name,master
+sakura.name,ジャネットにしき
+type,shell

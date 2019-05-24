@@ -1,0 +1,8 @@
+*L:
+*S:
+GET SHIORI/3.0
+Charset: UTF-8
+Event: OnJanetEval
+Reference0: (defn tset [a b] (string a "!!" b))
+Charset: UTF-8
+

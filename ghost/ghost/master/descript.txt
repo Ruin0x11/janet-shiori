@@ -1,0 +1,13 @@
+charset,UTF-8
+type,ghost
+name,ジャネット
+
+sakura.name,ジャネット
+kero.name,猫
+
+shiori,shiori.dll
+sstp.allowunspecifiedsend,1
+
+craftman,Ruin0x11
+craftmanw,ルイン
+craftmanurl,https://www.github.com/Ruin0x11

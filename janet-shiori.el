@@ -84,9 +84,7 @@ The following commands are available:
 
 (defun janet-shiori-eval-expression (exp)
   "Send the expression EXP to the Janet-SHIORI process."
-  (interactive
-   (cons (read--expression "Eval: ")
-         (eval-expression-get-print-arguments current-prefix-arg)))
+  (interactive "sEval: \n")
   (janet-shiori--send exp))
 
 (defun janet-shiori-eval-region (start end)

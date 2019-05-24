@@ -10,7 +10,6 @@
 #include "bool.h"
 #include "shiori.h"
 
-#include "hardwarebp.c"
 #include "strutl.c"
 #include "janet/dist/janet.c"
 #include "cshiori.c"
@@ -26,14 +25,10 @@ SHIORI_EXPORT bool SHIORI_CALL load(const MEMORY_HANDLE h,long len){
 	str[len] = '\0';
 	SHIORI_FREE(h);
 
-        out = fopen("shiori-native.txt", "w");
+        out = fopen("shiori-native.log", "w");
         fputs("*L:\n", out);
 
         bool result = cshiori_load(str, shiori_load);
-
-        //ind = HardwareBreakpoint_Set(&janet_vm_cache_capacity, sizeof(janet_vm_cache_capacity), HWBP_WRITE);
-
-        //bindd = HardwareBreakpoint_Set(&janet_vm_cache, sizeof(janet_vm_cache), HWBP_WRITE);
 
         free(str);
         return result;
@@ -73,8 +68,6 @@ SHIORI_EXPORT MEMORY_HANDLE SHIORI_CALL request(const MEMORY_HANDLE h,long *len)
 }
 
 SHIORI_EXPORT bool SHIORI_CALL unload(void){
-    // HardwareBreakpoint_Clear(bindd);
-    // HardwareBreakpoint_Clear(ind);
     ind = -1;
         fputs("*U:\n", out);
     fclose(out);

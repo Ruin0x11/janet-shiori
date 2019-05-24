@@ -1,1 +1,10 @@
 bin
+*.dll
+*.exp
+*.lib
+*.pdb
+*.log
+
+**/profile/
+**/ghost/master/init.janet
+**/ghost/master/modules/
