@@ -29,20 +29,13 @@
   (def buf @"")
   (var seen false)
   (loop [byte :in str]
-        (if seen
-            (do (set seen false)
-                (if (= 92 byte)
-                    (buffer/push-string "\\\\")
-                  (do
-                      (buffer/push-byte buf 92)
-                      (buffer/push-byte buf byte))))
-            (if (= 92 byte)
-                (set seen true)
-              (if-let [rep (get escapes byte)]
-                  (buffer/push-string buf rep)
-                (buffer/push-byte buf byte)))))
+        (if (= 92 byte)
+            (buffer/push-string buf "\\\\")
+          (if-let [rep (get escapes byte)]
+              (buffer/push-string buf rep)
+            (buffer/push-byte buf byte))))
   (when seen
-      (buffer/push-byte buf 92))
+    (buffer/push-byte buf 92))
   (string buf))
 
 (defn unescape-str
@@ -94,7 +87,6 @@
 
 (defn safe-eval-string [str]
   (let [trunc (fn [s] (escape-str (string/slice s 0 (min (length s) 256))))]
-    (pp (keys module/cache))
     (try
      (let [val (my-eval-string (unescape-str str) env)
            ret (if (string? val) (trunc val) val)]

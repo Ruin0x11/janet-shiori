@@ -78,7 +78,6 @@
 
 (defn- trigger* [event opts status]
   (let [result (trigger event opts status)]
-    (pp result)
     (match (type result)
            :string (make-response result)
            :struct (make-response result)
@@ -161,10 +160,13 @@ the status and return :value, a string or dictionary."
   (when log (file/write log str))
   str)
 
-(def- on-request-callbacks @[])
+(var on-request-callbacks @[])
 
 (defn on-request [cb]
   (array/concat on-request-callbacks cb))
+
+(defn clear-on-request [cb]
+  (set on-request-callbacks @[]))
 
 (defn parse-status [status]
   (if (not status)
