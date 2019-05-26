@@ -58,13 +58,19 @@
 (defn is-likely-sakura? [escaped-str]
   (some (fn [pref]
             (string/has-prefix? pref escaped-str))
-        @["\\\\0" "\\\\1" "\\\\p" "\\\\h"]))
+        @["\\\\0" "\\\\1" "\\\\p" "\\\\h" "\\\\b"]))
+
+(defmacro display-result [disp]
+  ~(sakura-raw (scope :kero) (surface 52) (quick-section "> " ,disp) (nl) (nl)))
+
+(defn prettify [s]
+  (escape-str (string/format "%.20p" s)))
 
 (shiori/set-handler "OnJanetEvalSuccess"
                     (let [default-resp (fn [x]
                                            (sakura (scope :kero) (surface 50) (quick-section "> " x (nl) (nl))
                                                    (scope :sakura) "こんなもんが出てきた。"))
-                           disp (string/format "%.20p" (ref 0))]
+                           disp (prettify (ref 0))]
                       (match (ref 1)
                              "shiori/set-handler"
                              (sakura (surface 1) "技の設定、完了。")
@@ -77,14 +83,22 @@
 
                                 "defn"
                                 (sakura (surface 4)
-                                        (scope :kero) (surface 51) (quick-section "> " disp) (nl) (nl)
+                                        (display-result disp)
                                         (scope :sakura) "新しいファンクションの誕生だっ！"
                                         (scope :kero) "いいぜ、もっとくれ！")
+
+                                "defmacro"
+                                (sakura (surface 1)
+                                        (display-result disp)
+                                        (scope :sakura) "新しいマクロですね。"
+                                        (scope :kero) "気をつけろよ。")
 
                                 "get"
                                 (if (= (ref 0) nil)
                                     (sakura "何も帰って来なかった。")
-                                  (sakura "ほいっ。" disp))
+                                  (sakura
+                                   (display-result disp)
+                                   (scope :sakura) "ほいっ。"))
 
                                x
                                (cond
@@ -148,16 +162,45 @@
 
                              (sakura "なに？" menu))))
 
+(shiori/set-handler "OnHourTimeSignal"
+                    (sakura (ref 0) "時ですよ。"))
+
 (shiori/on-choice "ai"
                   "トークを選択しました。")
 
+(defn pull-refs [opts]
+  (def tbl @{})
+  (var going true)
+  (var i 0)
+  (while going
+    (if-let [it (get opts (string/format "Reference%d" i))]
+        (do
+            (put tbl i it)
+            (set i (inc i)))
+      (set going false)))
+  tbl)
+
+(defn show-memory [opts]
+  (let [refs (pull-refs opts)]
+    (string/join (map (fn [[k v]] (sakura-raw k " - " v (nl))) (partition 2 (values refs))))))
+
+(shiori/on-choice "showmemory" (sakura (quick-section (show-memory opts))
+                                       "こういうのを受け取れた気がします。"))
+
+# TODO: need eager
+# (macex '(sakura (marker) (choice (string/join (kvs @{"a" "b" "c" "D"})))))
+(let [opts (string/join (kvs @{"Reference0" "b" "Reference1" "D"}) ",")]
+  (sakura (marker) (choice "Show memory" "showmemory" opts)))
+
 (shiori/on-choice "kioku"
-                  (sakura "えーっと、こういうイベントを覚えています。" (nl) (nl)
-                          (quick-section
-                           (string/join (sort (keys memory)) "\\n"))
-                          (nl)
-                          (nl) (choice "忘れろ" "wasurero")
-                          (nl) (choice "オッケー" "end")))
+                  (let [mem-choice (fn [[k v]] (string "\\q[" k ",showmemory," (string/join (map escape-str (kvs v)) ",") "]"))]
+                    (sakura "えーっと、こういうイベントを覚えています。" (nl) (nl)
+                            (balloon 2)
+                            (quick-section
+                             (string/join (map mem-choice (kvpairs memory)) "\\n"))
+                            (nl)
+                            (nl) (choice "忘れろ" "wasurero")
+                            (nl) (choice "オッケー" "end"))))
 
 (shiori/on-choice "wasurero"
                   (each k (keys memory) (put memory k nil))

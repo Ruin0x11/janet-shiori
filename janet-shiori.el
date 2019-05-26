@@ -35,6 +35,7 @@
     (define-key map "\C-c\C-r" 'janet-shiori-eval-region)
     (define-key map "\C-c\C-n" 'janet-shiori-eval-form-and-next)
     (define-key map "\C-c\C-p" 'janet-shiori-eval-paragraph)
+    (define-key map "\C-c\C-b" 'janet-shiori-eval-buffer)
     (define-key map "\C-c\C-s" 'janet-shiori-connect)
     ;(define-key map "\C-c\C-d" 'janet-shiori-describe-sym)
     ;(define-key map "\C-c\C-f" 'janet-shiori-show-function-documentation)
@@ -118,6 +119,10 @@ The following commands are available:
     (up-list))
   (janet-shiori-eval-last-sexp)
   (forward-sexp))
+
+(defun janet-shiori-eval-buffer ()
+  (interactive)
+  (janet-shiori-eval-region (point-min) (point-max)))
 
 (defun janet-shiori--initialize-esf ()
   (when (boundp 'eval-sexp-fu)

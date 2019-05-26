@@ -146,7 +146,7 @@ the status and return :value, a string or dictionary."
 
 
 (defmacro on-choice [choice & body]
-  ~(shiori/register-handler "OnChoiceSelect" (when (= (get opts "Reference0") ,choice) ,;body)))
+  ~(shiori/register-handler "OnChoiceSelectEx" (when (= (get opts "Reference1") ,choice) ,;body)))
 
 #
 #

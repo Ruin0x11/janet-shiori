@@ -86,7 +86,7 @@
 (var env (make-env))
 
 (defn safe-eval-string [str]
-  (let [trunc (fn [s] (escape-str (string/slice s 0 (min (length s) 256))))]
+  (let [trunc (fn [s] (escape-str (string/slice s 0 (min (length s) 1024))))]
     (try
      (let [val (my-eval-string (unescape-str str) env)
            ret (if (string? val) (trunc val) val)]

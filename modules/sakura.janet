@@ -138,8 +138,8 @@
   (def arr @[])
   (each x i
         (if (and (tuple? x) (= recurse-sentinel) (first x))
-            (each x (tuple/slice x 1) (array/concat arr x))
-          (array/concat arr x)))
+            (each x (tuple/slice x 1) (array/insert arr -1 x))
+          (array/insert arr -1 x)))
   arr)
 
 (defmacro sakura-recurse [i tag1 tag2 idx]
@@ -379,8 +379,13 @@
                                      :block
                                      "TODO"
 
+                                     nil
+                                     ~[:recurse "\\q[" ,val "]"]
+
                                      x
-                                     (string/format "\\q[%s%s]" val (arg-list i 2)))
+                                     (if (nil? arg2)
+                                         ~[:recurse "\\q[" ,val "," ,arg1 "]"]
+                                         ~[:recurse "\\q[" ,val "," ,arg1 "," ,arg2 "]"]))
 
                               (symbol= :no-timeout sym)
                               "\\*"
