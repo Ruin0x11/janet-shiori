@@ -13,8 +13,6 @@
 (set shiori/craftman "Ruin0x11")
 (set shiori/craftmanw "ルイン")
 
-(def default-surface 100)
-
 (shiori/register-handler "OnFirstBoot"
   (sakura "はじめまして。"))
 
@@ -32,7 +30,7 @@
 
 (def phrases
 @[(sakura "Janet言語って、" (wait 4) "胸キュン？")
-  (sakura (surface 5) "ChickenSchemeもよろしく。" )
+  (sakura (surface 4) "ChickenSchemeもよろしく。" )
   (sakura "C++だとconst char*なリテラルをchar*に入れるなっていう警告が出るけど、" (wait 9) (surface 1) "まあコンパイルとおるからいいよね？")
   (sakura "古いVC++ではstdbool.hがなくてコンパイルできないから、" (wait 9) (surface 1) "マクロでbool定めてるっていう……。")
   (sakura (surface 3) "あとの実装はキミしだい。")])
@@ -125,9 +123,9 @@
 #                              (sakura (string (ref 2) "、見つからなかった…\n"))))
 
 (set env (fiber/getenv (fiber/current)))
-#
+
 (def memory @{})
-#
+
 (defn remember [event opts status]
   (unless (get shiori/handlers event)
     (put memory event opts)))
@@ -136,7 +134,6 @@
 
 (def menu (sakura
            (time-critical)
-           (balloon 2)
            (nl :half)
            (nl)
            (quick-section
@@ -184,7 +181,7 @@
   (let [refs (pull-refs opts)]
     (string/join (map (fn [[k v]] (sakura-raw k " - " v (nl))) (partition 2 (values refs))))))
 
-(shiori/on-choice "showmemory" (sakura (quick-section (show-memory opts))
+(shiori/on-choice "showmemory" (sakura (quick-section (show-memory opts) (nl))
                                        "こういうのを受け取れた気がします。"))
 
 # TODO: need eager
@@ -199,8 +196,8 @@
                             (quick-section
                              (string/join (map mem-choice (kvpairs memory)) "\\n"))
                             (nl)
-                            (nl) (choice "忘れろ" "wasurero")
-                            (nl) (choice "オッケー" "end"))))
+                            (nl) (marker) (choice "忘れろ" "wasurero")
+                            (nl) (marker) (choice "オッケー" "end"))))
 
 (shiori/on-choice "wasurero"
                   (each k (keys memory) (put memory k nil))

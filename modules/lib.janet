@@ -16,6 +16,15 @@
   (each x arr (put tbl x true))
   tbl)
 
+(defn in? [set i]
+  (if (not (indexed? set))
+      nil
+      (let [kvs (flatten (map (fn [a] [a true]) set))]
+        (get (table (splice kvs)) i))))
+
+(defn symbol= [a b]
+  (= (symbol a) b))
+
 (def- escapes @{13 "\\r"
                 10 "\\n"
                 92 "\\\\"})

@@ -1,17 +1,8 @@
-(defn in? [set i]
-  (if (not (indexed? set))
-      nil
-      (let [kvs (flatten (map (fn [a] [a true]) set))]
-        (get (table (splice kvs)) i))))
-
 (defn match-id [id]
   (match id
          :sakura 0
          :kero 1
          x x))
-
-(defn symbol= [a b]
-  (= (symbol a) b))
 
 (defn arg-list [val &opt slice-idx end-idx]
   (default slice-idx 1)
@@ -149,42 +140,54 @@
      # if it is the return value of a function.
      [recurse-sentinel ,tag1 (flat (map sakura-reify it)) ,tag2]))
 
+(defn surface [val]
+  (string/format "\\s[%s]" (string val)))
+
+(defn anim [val &opt arg1 arg2 arg3]
+  (cond
+   (= arg1 :wait)
+   (string/format "\\i[%s,%s]"
+                  (string val)
+                  (string arg1))
+
+   (in? [:clear :pause :resume] arg1)
+   (string/format "\\i[anim,%s,%s]"
+                  (string arg1)
+                  (string val))
+
+   (= arg1 :offset)
+   (string/format "\\i[anim,%s,%s,%d,%d]"
+                  (string arg1)
+                  (string val)
+                  arg2
+                  arg3)
+
+   (= arg1 :waitall)
+   (string/format "\\__w[animation,%s]"
+                  (string val))
+
+
+   (string/format "\\i[%s]" (string val))))
+
+(defn scope [val]
+  (string/format "\\p[%d]" (match-id val)))
+
+(defn set-alignment-on-desktop [val]
+  )
+
 (defn sakura-reify [i]
   (cond
    (tuple? i)
    (let [[sym val arg1 arg2 arg3] i]
      (cond
       (symbol= :surface sym)
-      (string/format "\\s[%s]" (string val))
+      (surface val)
 
       (symbol= :anim sym)
-      (cond
-       (= arg1 :wait)
-       (string/format "\\i[%s,%s]"
-                      (string val)
-                      (string arg1))
-
-       (in? [:clear :pause :resume] arg1)
-       (string/format "\\i[anim,%s,%s]"
-                      (string arg1)
-                      (string val))
-
-       (= arg1 :offset)
-       (string/format "\\i[anim,%s,%s,%d,%d]"
-                      (string arg1)
-                      (string val)
-                      arg2
-                      arg3)
-
-       (= arg1 :waitall)
-       (string/format "\\__w[animation,%s]"
-                      (string val))
-
-
-       (string/format "\\i[%s]" (string val)))
+      (anim val arg1 arg2 arg3)
 
       (symbol= :scope sym)
-      (string/format "\\p[%d]" (match-id val))
+      (scope val)
 
       (and
        (or (symbol= :lock sym)
