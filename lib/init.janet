@@ -16,14 +16,15 @@
   (each x arr (put tbl x true))
   tbl)
 
-(defn in? [set i]
-  (if (not (indexed? set))
-      nil
-      (let [kvs (flatten (map (fn [a] [a true]) set))]
-        (get (table (splice kvs)) i))))
+(defn symbol= [a b] (= (symbol a) b))
 
-(defn symbol= [a b]
-  (= (symbol a) b))
+(defn in? [vals v]
+  (some (fn [a] (= a v)) vals))
+
+(defn verify-in [vals v sym]
+  (unless (in? vals v)
+    (let [s (string/join (map string vals) ", ")]
+      (error (string/format "%s takes one of %s" (string sym) s)))))
 
 (def- escapes @{13 "\\r"
                 10 "\\n"

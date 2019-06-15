@@ -159,7 +159,7 @@
         meth
         (meth (splice (tuple/slice i 1)))
 
-        [:recurse (tuple i)]))
+        (error (string/format "unknown sakura '%s'" (string sym)))))
 
     (string? i) (string/replace-all "\n" "\\n" i)
 
@@ -276,6 +276,7 @@
 (defsakura balloon [val]
   (string/format "\\b[%d]"
     (if (= val :hide) -1 val)))
+(put meths :balloon balloon)
 
 (defsakura balloon-paste [& rest]
   (let [[val arg1 arg2] rest]
@@ -335,6 +336,7 @@
 (put meths :set-balloon-timeout set-balloon-timeout)
 
 (defsakura marker [] "\\![*]")
+(put meths :marker marker)
 
 (defn enter-leave [sym val]
   (verify-in [:online-mode :no-user-break-mode] val sym)
@@ -409,7 +411,7 @@
     "\\![quicksection,true]"
     "\\![quicksection,false]"
     0))
-(put meths :quick-section quick-section-macro)
+(put meths :quick-section-macro quick-section-macro)
 
 # TODO
 (defsakura synchronize [& rest]
@@ -437,6 +439,7 @@
       (if (nil? arg2)
         (string "\\q[" val "," arg1 "]")
         (string "\\q[" val "," arg1 "," arg2 "]")))))
+(put meths :choice choice)
 
 (defsakura choice-macro [val & rest]
   (let [[arg1 arg2 arg3] rest]
@@ -453,6 +456,7 @@
       (if (nil? arg2)
         (string "\\q[" val "," arg1 "]")
         (string "\\q[" val "," arg1 "," arg2 "]")))))
+(put meths :choice-macro choice-macro)
 
 (defsakura no-timeout [] "\\*")
 
@@ -486,11 +490,11 @@
 (defsakura update [] "\\![update,platform]")
 
 (defn compile-raw [& args]
-  (string/join (flatten-macro-result (map sakura-reify args))))
+  ~(string/join ,(flatten-macro-result (map sakura-reify args))))
 
 (defmacro compile [& args]
   (let [t (tuple '(scope :sakura) '(surface 0) (splice args) '(end))]
-    (string/join (flatten-macro-result (map sakura-reify t)))))
+    ~(string/join ,(flatten-macro-result (map sakura-reify t)))))
 
 (defn concat-raw [& args]
   (string/join (flatten args)))

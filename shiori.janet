@@ -1,6 +1,6 @@
 (import "lib" :prefix "")
 
-(def- valid-ops {"GET" true "POST" true "NOTIFY" true})
+(def- valid-ops {"GET" :get "POST" :post "NOTIFY" :notify})
 
 (def handlers @{})
 (var state {})
@@ -43,12 +43,13 @@
     (if (= "GET Version SHIORI/2.6")
         {:op "GET Version" :ver "2.6" :opts opts} # hack
       (let [[op s] (string/split " " head)
+            op-kw (get valid-ops op)
             [shiori ver] (string/split "/" s)]
         (unless (= ver "3.0") (error "Bad version"))
         (unless (= shiori "SHIORI") (error "Bad request"))
         (unless (get opts "ID") (error "No ID"))
-        (unless (get valid-ops op) (error "Bad operation"))
-        {:op op :ver ver :opts opts}))))
+        (unless op-kw (error "Bad operation"))
+        {:op op-kw :ver ver :opts opts}))))
 
 (defn- make-status [result]
   (let [found
@@ -88,65 +89,84 @@
                (make-response (get result 0)))
            (bad-request "Bad handler"))))
 
-(defmacro register-handler
-  "Register a function for the SHIORI event EVENT that runs BODY.
+(defn register-handler
+  "Register a function for the SHIORI event EVENT that runs FUNC.
 The function takes the arguments [OPTS STATE] and returns either
 RESULT or a tuple [RESULT STATE]. If RESULT is a string, return a 200
 with the string as 'Value'. If RESULT is a dictionary, use :status as
 the status and return :value, a string or dictionary."
-  [event & body]
-  (with-syms [$the-func $handlers]
-    ~(let [,$the-func (fn [opts status state] ,;body)
-           ,$handlers (((module/cache "shiori") (symbol :handlers)) :value)]
-       (unless (get ,$handlers ,event)
-         (put ,$handlers ,event @[]))
-       (array/insert (get ,$handlers ,event) 0 ,$the-func))))
+  [event func]
+  (let [handlers (((module/cache "shiori") (symbol :handlers)) :value)]
+    (unless (get handlers event)
+      (put handlers event @[]))
+    (array/insert (get handlers event) 0 func)))
 
-(defmacro set-handler
-  "Like `register-handler`, but clears the handlers table for EVENT first. "
-  [event & body]
-  (with-syms [$the-func $handlers]
-    ~(let [,$the-func (fn [opts status state] ,;body)
-           ,$handlers (((module/cache "shiori") (symbol :handlers)) :value)]
-       (put ,$handlers ,event @[])
-       (array/insert (get ,$handlers ,event) 0 ,$the-func))))
-
-(defmacro- set-handler-internal [event & body]
-  (with-syms [$the-func]
-             ~(let [,$the-func (fn [opts status state] ,;body)]
-                (put handlers ,event @[])
-                (array/insert (get handlers ,event) 0 ,$the-func))))
-
-(defn clear-handlers [event]
+(defn clear-handlers
+  "Clears all event handlers for EVENT."
+  [event]
   (put handlers event @[]))
 
-(var version "0.0.1")
-(var name "janet-shiori")
-(var craftman "Ruin0x11")
-(var craftmanw "ルイン")
+(defn set-handler
+  "Like `register-handler`, but clears the handlers table for EVENT first. "
+  [event func]
+  (clear-handlers event)
+  (array/insert (get handlers event) 0 func))
 
-(set-handler-internal "version" version)
-(set-handler-internal "name" name)
-(set-handler-internal "craftman" craftman)
-(set-handler-internal "craftmanw" craftmanw)
+(defn- get-nested
+  [map keys]
+  (var ret map)
+  (var going true)
+  (def len (length keys))
+  (for i 0 len
+    (let [k (keyword (get keys i))]
+      (set ret
+        (cond
+          (not (dictionary? ret))
+          nil
 
-(defn get-top-sym [code]
+          (== i (- len 1))
+          (get ret k)
+
+          (let [v (get ret k)]
+            (if (dictionary? v)
+              v
+              nil))))))
+  ret)
+
+(defn- get-env-binding [env name]
+  (get (or (get env (symbol name)) @{}) :value))
+
+(def config
+  (if (os/stat "config.janet")
+    (get-env-binding (dofile "config.janet") :config)
+    @{}))
+
+(defn get-config-value
+  "Gets a value in the config from a string like 'my.nested.value'."
+  [key]
+  (get-nested config (string/split "." key)))
+
+(defn- get-top-sym [code]
   (let [parts (string/split " " code)]
     (if (> (length parts) 0)
         (string/triml (get parts 0) "(")
       "")))
 
-(set-handler-internal
- "OnJanetEval"
- (let [code (get opts "Reference0")
-            head (get-top-sym code)
-            [stat res] (safe-eval-string code)
-            event (if (= stat :failure) "OnJanetEvalFailure" "OnJanetEvalSuccess")]
-   (trigger event @{"Reference0" res "Reference1" head} status)))
+(defn- on-janet-eval [opts status state]
+  (let [code (get opts "Reference0")
+        head (get-top-sym code)
+        [stat res] (safe-eval-string code)
+        event (if (= stat :failure) "OnJanetEvalFailure" "OnJanetEvalSuccess")]
+    (trigger event @{"Reference0" res "Reference1" head} status)))
+
+(set-handler "OnJanetEval" on-janet-eval)
 
 
-(defmacro on-choice [choice & body]
-  ~(shiori/register-handler "OnChoiceSelectEx" (when (= (get opts "Reference1") ,choice) ,;body)))
+(defn on-choice [choice func]
+  (register-handler "OnChoiceSelectEx"
+    (fn [opts status state]
+      (when (= (get opts "Reference1") choice)
+        (func opts status state)))))
 
 #
 #
@@ -186,12 +206,20 @@ bound as it is called from C."
    (try
     (do
         (dolog req)
-        (let [{:opts opts} (parse-request req)
+        (let [{:op op :opts opts} (parse-request req)
               id (or (opts "ID") (opts "Event"))
               status (parse-status (opts "Status"))]
           (each cb on-request-callbacks
-                (apply cb id opts [status]))
-          (trigger* id opts status)))
+                (apply cb id opts status [state]))
+          (match op
+            :get
+            (trigger* id opts status)
+
+            :post
+            (trigger* id opts status)
+
+            :notify
+            (trigger* id opts status))))
     ([err fib]
      (debug/stacktrace fib err)
      (bad-request err)))))
